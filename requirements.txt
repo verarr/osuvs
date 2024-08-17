@@ -1,0 +1,7 @@
+discord.py
+osu.py
+openskill>=6.0.0
+sortedcollections>=2.1.0
+cachetools>=5.4.0
+unopt>=0.2.0
+pwinput>=1.0.0
