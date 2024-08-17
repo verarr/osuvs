@@ -5,7 +5,13 @@ import discord
 import osu
 from openskill.models.weng_lin.plackett_luce import PlackettLuceRating
 
-from misc.osuvs_constants import *
+from misc.osuvs_constants import (
+    DiscordUserId,
+    IdType,
+    OsuUserId,
+    RatingDataType,
+    RatingModelType,
+)
 
 DATABASE: str = "./osuvs.db"
 
@@ -36,9 +42,9 @@ class DiscordLinksDatabase:
         self, discord_user: discord.Member | discord.User | DiscordUserId
     ) -> OsuUserId:
         cur.execute(
-            f"""SELECT {self.columns[IdType.osu_id]}
+            f"""SELECT {self.columns[IdType.OSU_ID]}
                 FROM {self.table}
-                WHERE {self.columns[IdType.discord_id]} = ?""",
+                WHERE {self.columns[IdType.DISCORD_ID]} = ?""",
             (
                 (
                     discord_user.id
@@ -48,10 +54,9 @@ class DiscordLinksDatabase:
             ),
         )
         result = cur.fetchone()
-        if result is not None:
-            return result[0]
-        else:
+        if result is None:
             raise KeyError(f"No osu user linked to Discord user {discord_user}")
+        return result[0]
 
     def __setitem__(
         self,
@@ -68,7 +73,7 @@ class DiscordLinksDatabase:
         }
         cur.execute(
             f"""INSERT OR REPLACE INTO {self.table}
-                (`{self.columns[IdType.discord_id]}`, `{self.columns[IdType.osu_id]}`)
+                (`{self.columns[IdType.DISCORD_ID]}`, `{self.columns[IdType.OSU_ID]}`)
                 VALUES (:discord_id, :osu_id)""",
             data,
         )
@@ -79,7 +84,7 @@ class DiscordLinksDatabase:
     ) -> None:
         cur.execute(
             f"""DELETE FROM {self.table}
-                WHERE {self.columns[IdType.discord_id]} =?""",
+                WHERE {self.columns[IdType.DISCORD_ID]} =?""",
             (
                 (
                     discord_user.id
@@ -96,7 +101,7 @@ class DiscordLinksDatabase:
         cur.execute(
             f"""SELECT 1
                 FROM {self.table}
-                WHERE {self.columns[IdType.discord_id]} =?""",
+                WHERE {self.columns[IdType.DISCORD_ID]} =?""",
             (
                 (
                     discord_user.id
@@ -116,16 +121,16 @@ class AbstractOsuRatingsDatabase:
         self.table = table
         self.columns = columns
 
-    def __getitem__(self) -> Never:
+    def __getitem__(self, key) -> Never:
         raise NotImplementedError("Subclass must implement __getitem__ method")
 
-    def __setitem__(self) -> Never:
+    def __setitem__(self, key, value) -> Never:
         raise NotImplementedError("Subclass must implement __setitem__ method")
 
     def __delitem__(self, osu_user: osu.User | OsuUserId) -> None:
         cur.execute(
             f"""DELETE FROM {self.table}
-                WHERE {self.columns[IdType.osu_id]} =?""",
+                WHERE {self.columns[IdType.OSU_ID]} =?""",
             (osu_user.id if isinstance(osu_user, osu.User) else osu_user,),
         )
         con.commit()
@@ -134,7 +139,7 @@ class AbstractOsuRatingsDatabase:
         cur.execute(
             f"""SELECT 1
                 FROM {self.table}
-                WHERE {self.columns[IdType.osu_id]} =?""",
+                WHERE {self.columns[IdType.OSU_ID]} =?""",
             (osu_user.id if isinstance(osu_user, osu.User) else osu_user,),
         )
         return cur.fetchone() is not None
@@ -142,7 +147,7 @@ class AbstractOsuRatingsDatabase:
     def init_blank_ratings(self, osu_user: osu.User | OsuUserId) -> None:
         cur.execute(
             f"""INSERT INTO {self.table}
-                ({self.columns[IdType.osu_id]})
+                ({self.columns[IdType.OSU_ID]})
                 VALUES (?)""",
             (osu_user.id if isinstance(osu_user, osu.User) else osu_user,),
         )
@@ -157,9 +162,9 @@ class OsuRatingsDatabase(AbstractOsuRatingsDatabase):
         super().__init__(
             table,
             {
-                IdType.osu_id: columns[IdType.osu_id],
-                RatingDataType.mu: f"{model}_{columns[RatingDataType.mu]}",
-                RatingDataType.sigma: f"{model}_{columns[RatingDataType.sigma]}",
+                IdType.OSU_ID: columns[IdType.OSU_ID],
+                RatingDataType.MU: f"{model}_{columns[RatingDataType.MU]}",
+                RatingDataType.SIGMA: f"{model}_{columns[RatingDataType.SIGMA]}",
             },
         )
 
@@ -168,19 +173,18 @@ class OsuRatingsDatabase(AbstractOsuRatingsDatabase):
         self, osu_user: osu.User | OsuUserId
     ) -> dict[RatingDataType, float] | PlackettLuceRating:
         cur.execute(
-            f"""SELECT {self.columns[RatingDataType.mu]}, {self.columns[RatingDataType.sigma]}
+            f"""SELECT {self.columns[RatingDataType.MU]}, {self.columns[RatingDataType.SIGMA]}
                 FROM {self.table}
-                WHERE {self.columns[IdType.osu_id]} =?""",
+                WHERE {self.columns[IdType.OSU_ID]} =?""",
             (osu_user.id if isinstance(osu_user, osu.User) else osu_user,),
         )
         result = cur.fetchone()
-        if result is not None:
-            return {
-                RatingDataType.mu: result[0],
-                RatingDataType.sigma: result[1],
-            }
-        else:
+        if result is None:
             raise KeyError(f"No ratings found for osu user {osu_user}")
+        return {
+            RatingDataType.MU: result[0],
+            RatingDataType.SIGMA: result[1],
+        }
 
     @override
     def __setitem__(
@@ -189,38 +193,38 @@ class OsuRatingsDatabase(AbstractOsuRatingsDatabase):
         value: PlackettLuceRating | dict[RatingDataType, float],
     ) -> None:
         data: dict[str, float | int | OsuUserId] = {
-            self.columns[IdType.osu_id]: (
+            self.columns[IdType.OSU_ID]: (
                 osu_user.id if isinstance(osu_user, osu.User) else osu_user
             ),
-            self.columns[RatingDataType.mu]: (
+            self.columns[RatingDataType.MU]: (
                 value.mu
                 if isinstance(value, PlackettLuceRating)
-                else value[RatingDataType.mu]
+                else value[RatingDataType.MU]
             ),
-            self.columns[RatingDataType.sigma]: (
+            self.columns[RatingDataType.SIGMA]: (
                 value.sigma
                 if isinstance(value, PlackettLuceRating)
-                else value[RatingDataType.sigma]
+                else value[RatingDataType.SIGMA]
             ),
         }
         if osu_user in self:
             cur.execute(
                 f"""UPDATE {self.table}
                     SET
-                        {self.columns[RatingDataType.mu]} = :{self.columns[RatingDataType.mu]},
-                        {self.columns[RatingDataType.sigma]} = :{self.columns[RatingDataType.sigma]}
-                    WHERE {self.columns[IdType.osu_id]} = :{self.columns[IdType.osu_id]}""",
+                        {self.columns[RatingDataType.MU]} = :{self.columns[RatingDataType.MU]},
+                        {self.columns[RatingDataType.SIGMA]} = :{self.columns[RatingDataType.SIGMA]}
+                    WHERE {self.columns[IdType.OSU_ID]} = :{self.columns[IdType.OSU_ID]}""",
                 data,
             )
         else:
             cur.execute(
                 f"""INSERT INTO {self.table}
-                    ({self.columns[IdType.osu_id]},
-                     {self.columns[RatingDataType.mu]},
-                     {self.columns[RatingDataType.sigma]})
-                    VALUES (:{self.columns[IdType.osu_id]},
-                            :{self.columns[RatingDataType.mu]},
-                            :{self.columns[RatingDataType.sigma]})""",
+                    ({self.columns[IdType.OSU_ID]},
+                     {self.columns[RatingDataType.MU]},
+                     {self.columns[RatingDataType.SIGMA]})
+                    VALUES (:{self.columns[IdType.OSU_ID]},
+                            :{self.columns[RatingDataType.MU]},
+                            :{self.columns[RatingDataType.SIGMA]})""",
                 data,
             )
         con.commit()
@@ -230,24 +234,24 @@ class OsuRatingsDatabase(AbstractOsuRatingsDatabase):
         cur.execute(
             f"""UPDATE {self.table}
                 SET
-                    {self.columns[RatingDataType.mu]} = NULL,
-                    {self.columns[RatingDataType.sigma]} = NULL
-                WHERE {self.columns[IdType.osu_id]} =?""",
+                    {self.columns[RatingDataType.MU]} = NULL,
+                    {self.columns[RatingDataType.SIGMA]} = NULL
+                WHERE {self.columns[IdType.OSU_ID]} =?""",
             (osu_user.id if isinstance(osu_user, osu.User) else osu_user,),
         )
 
     def dict(self) -> dict[OsuUserId, dict[RatingDataType, float]]:
         cur.execute(
             f"""SELECT
-                    {self.columns[IdType.osu_id]},
-                    {self.columns[RatingDataType.mu]},
-                    {self.columns[RatingDataType.sigma]}
+                    {self.columns[IdType.OSU_ID]},
+                    {self.columns[RatingDataType.MU]},
+                    {self.columns[RatingDataType.SIGMA]}
                 FROM {self.table}"""
         )
         return {
             osu_id: {
-                RatingDataType.mu: mu,
-                RatingDataType.sigma: sigma,
+                RatingDataType.MU: mu,
+                RatingDataType.SIGMA: sigma,
             }
             for osu_id, mu, sigma in cur.fetchall()
             if mu is not None and sigma is not None
@@ -256,17 +260,17 @@ class OsuRatingsDatabase(AbstractOsuRatingsDatabase):
 
 discord_links = DiscordLinksDatabase(
     DISCORD_OSU_TABLE,
-    {IdType.discord_id: DISCORD_ID_COLUMN, IdType.osu_id: OSU_ID_COLUMN},
+    {IdType.DISCORD_ID: DISCORD_ID_COLUMN, IdType.OSU_ID: OSU_ID_COLUMN},
 )
 
-ratings = AbstractOsuRatingsDatabase(OSU_RATINGS_TABLE, {IdType.osu_id: OSU_ID_COLUMN})
+ratings = AbstractOsuRatingsDatabase(OSU_RATINGS_TABLE, {IdType.OSU_ID: OSU_ID_COLUMN})
 models = {
     model: OsuRatingsDatabase(
         OSU_RATINGS_TABLE,
         {
-            IdType.osu_id: OSU_ID_COLUMN,
-            RatingDataType.mu: MU_COLUMN,
-            RatingDataType.sigma: SIGMA_COLUMN,
+            IdType.OSU_ID: OSU_ID_COLUMN,
+            RatingDataType.MU: MU_COLUMN,
+            RatingDataType.SIGMA: SIGMA_COLUMN,
         },
         model.value,
     )

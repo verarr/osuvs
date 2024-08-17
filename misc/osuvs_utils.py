@@ -1,5 +1,6 @@
 import re
-from typing import Callable, Mapping, Never, TypeVar
+from abc import ABCMeta, abstractmethod
+from typing import Any, Callable, Mapping, Never, TypeVar
 
 from cachetools import TTLCache
 from osu import GameModeStr
@@ -45,15 +46,15 @@ class TTLCachedDict(Mapping[K, V]):
         if key not in self._cache:
             try:
                 self._cache[key] = self._get_func(key)
-            except:
-                raise KeyError("Failed to retrieve value.")
+            except Exception as e:
+                raise KeyError("Failed to retrieve value.") from e
         return self._cache[key]
 
     def __contains__(self, key: K) -> bool:
         try:
             _ = self.get(key)
             return True
-        except:
+        except KeyError:
             return False
 
     def __iter__(self) -> Never:
@@ -61,10 +62,6 @@ class TTLCachedDict(Mapping[K, V]):
 
     def __len__(self) -> Never:
         raise NotImplementedError
-
-
-from abc import ABCMeta, abstractmethod
-from typing import Any, TypeVar
 
 
 class ComparableAddable(metaclass=ABCMeta):

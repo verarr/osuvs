@@ -1,3 +1,4 @@
+import dataclasses
 import subprocess
 from datetime import datetime
 from typing import Callable, Literal
@@ -8,7 +9,6 @@ from osu import User
 from unopt import unwrap
 
 import osuvs_ratings as ratings
-from misc.osuvs_utils import *
 
 
 def _elo_function(player: PlackettLuceRating):
@@ -29,25 +29,45 @@ def _change(
 
     increase = ""
     if after > before:
-        increase = f"{'▲ ' if position == 'before' else ''}{formatter(after - before)}{' ▲' if position == 'after' else ''}"
+        increase = (
+            ("▲ " if position == "before" else "")
+            + formatter(after - before)
+            + (" ▲" if position == "after" else "")
+        )
 
     decrease = ""
     if before > after:
-        decrease = f"{'▼ ' if position == 'before' else ''}{formatter(before - after)}{' ▼' if position == 'after' else ''}"
+        decrease = (
+            ("▼ " if position == "before" else "")
+            + formatter(before - after)
+            + (" ▼" if position == "after" else "")
+        )
 
     return (increase, decrease)
 
 
+def integer(x):
+    return str(int(round(x, 0)))
+
+
+def long_integer(x):
+    return "{:,}".format(int(round(x, 0)))
+
+
+def short_decimal(x):
+    return str(round(x, 2))
+
+
+def percentage(x):
+    return integer(x * 100)
+
+
+@dataclasses.dataclass
 class _Rectangle:
     def __init__(self, width, height):
         self.width = width
         self.height = height
 
-
-integer = lambda x: str(int(round(x, 0)))
-long_integer = lambda x: "{:,}".format(int(round(x, 0)))
-short_decimal = lambda x: str(round(x, 2))
-percentage = lambda x: integer(x * 100)
 
 GRAPHICS = "./graphics"
 INKSCAPE = "/usr/bin/inkscape"
@@ -291,7 +311,6 @@ class SmallProfileGraphic(Graphic):
         rank: int,
         model: ratings.RatingModel,
     ):
-        pass
         self.osu_user = osu_user
         self.rating = rating
         self.rank = rank
@@ -331,7 +350,7 @@ class SmallProfileGraphic(Graphic):
 def render(graphic: Graphic) -> bytes:
     variable_mappings, filename, size = graphic.render()
     svg: str = ""
-    with open(filename, "r") as f:
+    with open(filename, "r", encoding="utf-8") as f:
         svg = f.read()
     for string in variable_mappings:
         svg = svg.replace(string, variable_mappings[string])
@@ -347,5 +366,6 @@ def render(graphic: Graphic) -> bytes:
         ],
         input=svg.encode(),
         capture_output=True,
+        check=True,
     )
     return result.stdout

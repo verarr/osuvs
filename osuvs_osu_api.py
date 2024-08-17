@@ -2,8 +2,8 @@ import pickle
 
 import osu
 
-from misc.osuvs_constants import *
-from misc.osuvs_utils import *
+from misc.osuvs_constants import OsuBeatmapId, OsuUserId
+from misc.osuvs_utils import TTLCachedDict
 
 SECRETS_DIR: str = "./secrets"
 
@@ -12,22 +12,28 @@ try:
         OSU_API_DETAILS: dict[str, str | int] = pickle.load(f)
         assert isinstance(OSU_API_DETAILS["client_id"], int)
         assert isinstance(OSU_API_DETAILS["client_secret"], str)
-except FileNotFoundError:
-    print("osu! API details file not found.")
-    exit(1)
+except FileNotFoundError as e:
+    raise RuntimeError("osu! API details file not found.") from e
 
 
 class CachedOsuClient:
     _client: osu.Client
-    users: TTLCachedDict[tuple[OsuUserId, osu.GameModeStr], osu.User]
+    users: TTLCachedDict[tuple[OsuUserId | str, osu.GameModeStr | None], osu.User]
     beatmaps: TTLCachedDict[OsuBeatmapId, osu.Beatmap]
 
-    def __init__(self, client: osu.Client):
-        self._client = client
+    def _get_user(self, user_id: OsuUserId | str, mode: osu.GameModeStr):
+        return self._client.get_user(
+            int(user_id) if isinstance(user_id, OsuUserId) else user_id,  # type: ignore
+            mode,
+            key=("id" if isinstance(user_id, OsuUserId) else "username"),
+        )
+
+    def __init__(self, osu_client: osu.Client):
+        self._client = osu_client
         self.users = TTLCachedDict(
             maxsize=1000,
             ttl=60,
-            get_func=lambda x: self._client.get_user(int(x[0]), mode=x[1], key="id"),
+            get_func=lambda x: self._get_user(x[0], x[1]),
         )
         self.beatmaps = TTLCachedDict(
             maxsize=1000,

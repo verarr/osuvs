@@ -9,7 +9,7 @@ from sortedcollections import ValueSortedDict
 from unopt import UnwrapError, unwrap
 
 import osuvs_db as database
-from misc.osuvs_constants import *
+from misc.osuvs_constants import RatingModelType
 
 
 def _ranking_key(rating: PlackettLuceRating) -> float:
@@ -19,11 +19,11 @@ def _ranking_key(rating: PlackettLuceRating) -> float:
 class RatingNotFoundError(Exception):
     """Error class to indicate that a rating does not exist."""
 
-    def __init__(self, message):
-        super(RatingNotFoundError, self).__init__(message)
+    def __init__(self, message: str):
+        super().__init__(message)
 
 
-default_model = PlackettLuce
+DefaultModelType = PlackettLuce
 
 
 class RatingModel:
@@ -46,13 +46,13 @@ class RatingModel:
             assert not isinstance(osu_id, osu.User)
             assert not isinstance(rating, PlackettLuceRating)
             if (
-                rating[database.RatingDataType.mu] is not None
-                and rating[database.RatingDataType.sigma] is not None
+                rating[database.RatingDataType.MU] is not None
+                and rating[database.RatingDataType.SIGMA] is not None
             ):
                 buffer[osu_id] = self.model.create_rating(
                     [
-                        rating[database.RatingDataType.mu],
-                        rating[database.RatingDataType.sigma],
+                        rating[database.RatingDataType.MU],
+                        rating[database.RatingDataType.SIGMA],
                     ],
                     name=str(osu_id),
                 )
@@ -105,10 +105,10 @@ class RatingModel:
             teams_ratings: list[list[PlackettLuceRating]] = [
                 [self[user] for user in team] for team in teams
             ]
-        except UnwrapError:
+        except UnwrapError as e:
             raise RatingNotFoundError(
                 "All players in the match must have an initialized rating."
-            )
+            ) from e
         if dry_run:
             teams_ratings = deepcopy(teams_ratings)
 
@@ -124,7 +124,7 @@ class RatingModel:
 
 
 rating_models: dict[RatingModelType, RatingModel] = {
-    rating_model: RatingModel(default_model(), rating_model)
+    rating_model: RatingModel(DefaultModelType(), rating_model)
     for rating_model in RatingModelType
 }
 

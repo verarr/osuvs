@@ -9,8 +9,6 @@ import osuvs_osu_api as osu_api
 class MatchVoidException(Exception):
     """Exception to indicate that a match cannot be completed due to lack of scores."""
 
-    pass
-
 
 async def check_scores(teams: list[list[User]], beatmap: Beatmap):
     player_scores: list[list[int]] = []
@@ -21,7 +19,7 @@ async def check_scores(teams: list[list[User]], beatmap: Beatmap):
         team_score = 0
         for player in team:
             try:
-                scores = osu_api.client.get_user_scores(
+                scores = osu_api.client._client.get_user_scores(
                     player.id, UserScoreType.RECENT, mode=beatmap.mode
                 )
                 valid_scores = [

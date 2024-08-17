@@ -1,4 +1,5 @@
 import pickle
+import sys
 from copy import deepcopy
 from io import BytesIO
 from time import gmtime, strftime, time
@@ -6,6 +7,7 @@ from typing import Literal
 
 import discord
 from discord import app_commands
+from osu import GameModeStr
 from requests import HTTPError
 from unopt import unwrap
 
@@ -14,8 +16,8 @@ import osuvs_graphics as graphics
 import osuvs_matches as matches
 import osuvs_osu_api as osu_api
 import osuvs_ratings as ratings
-from misc.osuvs_constants import *
-from misc.osuvs_utils import *
+from misc.osuvs_constants import OsuBeatmapId, RatingModelType
+from misc.osuvs_utils import parse_beatmap_url
 
 SECRETS_DIR: str = "./secrets"
 
@@ -25,7 +27,7 @@ try:
         TOKEN = pickle.load(f)
 except FileNotFoundError:
     print("Token file not found.")
-    exit(1)
+    sys.exit(1)
 
 GUILD = discord.Object(id=1271199252667830363)  # my server shshshshshshshshsh
 OWO_BOT_ID: int = 289066747443675143
@@ -34,8 +36,8 @@ OWO_BOT_ID: int = 289066747443675143
 class MyClient(discord.Client):
     """Customized Discord client"""
 
-    GUILD: discord.Guild
-    OWO_BOT: discord.Member | None
+    guild: discord.Guild
+    owo_bot: discord.Member | None
 
     def __init__(self, *, intents: discord.Intents) -> None:
         super().__init__(intents=intents)
@@ -46,11 +48,11 @@ class MyClient(discord.Client):
         await self.tree.sync(guild=GUILD)
 
 
-intents = discord.Intents.default()
-intents.members = True
+client_intents = discord.Intents.default()
+client_intents.members = True
 # intents.message_content = True
 
-client = MyClient(intents=intents)
+client = MyClient(intents=client_intents)
 
 
 # bot functionality
@@ -61,10 +63,10 @@ async def on_ready():
     print(f"Logged in as {client.user} (ID: {unwrap(client.user).id})")
     print("------")
 
-    client.GUILD = unwrap(client.get_guild(GUILD.id))
-    print(f"Got guild: {client.GUILD.name}")
-    client.OWO_BOT = client.GUILD.get_member(OWO_BOT_ID)
-    print(f"owo bot is here: {unwrap(client.OWO_BOT).id}")
+    client.guild = unwrap(client.get_guild(GUILD.id))
+    print(f"Got guild: {client.guild.name}")
+    client.owo_bot = client.guild.get_member(OWO_BOT_ID)
+    print(f"owo bot is here: {unwrap(client.owo_bot).id}")
 
     print("------")
     print("Ready!")
@@ -77,7 +79,7 @@ class Accept(discord.ui.View):
         self.allowed_users = allowed_users
 
     @discord.ui.button(label="Accept", emoji="🤝", style=discord.ButtonStyle.green)
-    async def accept(self, interaction: discord.Interaction, button: discord.ui.Button):
+    async def accept(self, interaction: discord.Interaction, _: discord.ui.Button):
         if interaction.user in self.allowed_users:
             self.value = True
             await interaction.response.defer()
@@ -88,9 +90,7 @@ class Accept(discord.ui.View):
             )
 
     @discord.ui.button(label="Decline", emoji="✋", style=discord.ButtonStyle.red)
-    async def decline(
-        self, interaction: discord.Interaction, button: discord.ui.Button
-    ):
+    async def decline(self, interaction: discord.Interaction, _: discord.ui.Button):
         if interaction.user in self.allowed_users:
             self.value = False
             await interaction.response.defer()
@@ -154,10 +154,13 @@ async def challenge(
 
     # check players
     try:
-        challenger_osu = osu_api.client.users[(database.discord_links[interaction.user], mode)]
+        challenger_osu = osu_api.client.users[
+            (database.discord_links[interaction.user], mode)
+        ]
     except KeyError:
         return await interaction.followup.send(
-            "You haven't linked your profile yet. This unfortunately means you can't challenge someone."
+            "You haven't linked your profile yet. "
+            + "This unfortunately means you can't challenge someone."
             + "\n"
             + "Use `/link` to link your profile.",
             ephemeral=True,
@@ -166,30 +169,37 @@ async def challenge(
         opponent_osu = osu_api.client.users[(database.discord_links[opponent], mode)]
     except KeyError:
         return await interaction.followup.send(
-            "Your opponent hasn't linked their profile yet. This unfortunately means you can not challenge them.",
+            "Your opponent hasn't linked their profile yet. "
+            + "This unfortunately means you can not challenge them.",
             ephemeral=True,
         )
-        
-    rating_model = ratings.rating_models[RatingModelType(mode)]
+
+    rating_model = ratings.rating_models[RatingModelType.from_gamemodestr(mode)]
 
     challenger_rating = rating_model[challenger_osu]
     opponent_rating = rating_model[opponent_osu]
 
     graphic = discord.File(
         BytesIO(
-            graphics.render(graphics.OneVOneBeforeGraphic(
-                (opponent_osu, opponent_rating), (challenger_osu, challenger_rating), rating_model
-            ))
+            graphics.render(
+                graphics.OneVOneBeforeGraphic(
+                    (opponent_osu, opponent_rating),
+                    (challenger_osu, challenger_rating),
+                    rating_model,
+                )
+            )
         ),
         filename="match-banner.png",
     )
     view = Accept([opponent])
 
     thread = await channel.create_thread(
-        name=f"{interaction.user.display_name} vs {opponent.display_name} ({strftime('%A %B %d', gmtime())})",
+        name=f"{interaction.user.display_name} vs {opponent.display_name}"
+        + " "
+        + f"({strftime('%A %B %d', gmtime())})",
         type=discord.ChannelType.private_thread,
     )
-    await thread.add_user(unwrap(client.OWO_BOT))
+    await thread.add_user(unwrap(client.owo_bot))
     await thread.send(
         f"Watch out {opponent.mention}, {interaction.user.mention} wants to challenge you!"
         + "\n"
@@ -219,18 +229,20 @@ async def challenge(
             return
         case True:
             await thread.send(
-                f"Alright, bring it on! Match will end <t:{int(time() + max(beatmap_info.total_length * 1.5, 60))}:R>."
+                "Alright, bring it on! Match will end "
+                + f"<t:{int(time() + max(beatmap_info.total_length * 1.5, 60))}:R>"
+                + "."
             )
 
     try:
         scores: list[list[int | float]] = [
-            [score for score in team_scores]
+            list(team_scores)
             for team_scores in await matches.do_match(
                 [[challenger_osu], [opponent_osu]], beatmap_info
             )
         ]
     except matches.MatchVoidException:
-        await thread.send(f"No player set any valid scores.")
+        await thread.send("No player set any valid scores.")
         return
     teams = [[challenger_osu], [opponent_osu]]
 
@@ -258,12 +270,22 @@ async def challenge(
             winner_b = "player2"
     graphic = discord.File(
         BytesIO(
-            graphics.render(graphics.OneVOneAfterGraphic(
-                (opponent_osu, (opponent_rating, opponent_rating_after), int(scores[1][0])),
-                (challenger_osu, (challenger_rating, challenger_rating_after), int(scores[0][0])),
-                rating_model,
-                winner=winner_b,
-            ))
+            graphics.render(
+                graphics.OneVOneAfterGraphic(
+                    (
+                        opponent_osu,
+                        (opponent_rating, opponent_rating_after),
+                        int(scores[1][0]),
+                    ),
+                    (
+                        challenger_osu,
+                        (challenger_rating, challenger_rating_after),
+                        int(scores[0][0]),
+                    ),
+                    rating_model,
+                    winner=winner_b,
+                )
+            )
         ),
         filename="match-banner.png",
     )
@@ -273,13 +295,21 @@ async def challenge(
 
 @client.tree.command()
 @app_commands.rename(model="mode")
-@app_commands.describe(model="Gamemode / Ruleset", player="Player whose profile to check")
-async def profile(interaction: discord.Interaction,
-                  model: RatingModelType = RatingModelType.osu, player: discord.Member | None = None):
+@app_commands.describe(
+    model="Gamemode / Ruleset", player="Player whose profile to check"
+)
+async def profile(
+    interaction: discord.Interaction,
+    model: RatingModelType = RatingModelType.OSU,
+    player: discord.Member | None = None,
+):
     """Check a player's profile."""
     try:
         osu_user = osu_api.client.users[
-            (database.discord_links[player or interaction.user], model.value)
+            (
+                database.discord_links[player or interaction.user],
+                GameModeStr(model.value),
+            )
         ]
     except KeyError:
         return await interaction.response.send_message(
@@ -292,7 +322,7 @@ async def profile(interaction: discord.Interaction,
         )
 
     await interaction.response.defer(thinking=True)
-    
+
     rating_model = ratings.rating_models[model]
 
     rating = rating_model[osu_user]
@@ -301,11 +331,14 @@ async def profile(interaction: discord.Interaction,
         "",
         file=discord.File(
             BytesIO(
-                graphics.render(graphics.SmallProfileGraphic(
-                    osu_user, rating,
-                    rating_model.osu_ratings_links.index(osu_user.id) + 1,
-                    rating_model
-                ))
+                graphics.render(
+                    graphics.SmallProfileGraphic(
+                        osu_user,
+                        rating,
+                        rating_model.osu_ratings_links.index(osu_user.id) + 1,
+                        rating_model,
+                    )
+                )
             ),
             filename="profile-small.png",
         ),
@@ -319,7 +352,7 @@ async def link(interaction: discord.Interaction, username: str):
     await interaction.response.defer(ephemeral=True, thinking=True)
 
     try:
-        osu_user = osu_api.client.get_user(user=username, key="username")  # type: ignore
+        osu_user = osu_api.client.users[(username, None)]
     except HTTPError:
         return await interaction.followup.send("User not found.", ephemeral=True)
 
@@ -361,7 +394,7 @@ async def admin_link(
     await interaction.response.defer(ephemeral=True, thinking=True)
 
     try:
-        osu_user = osu_api.client.get_user(user=username, key="username")  # type: ignore
+        osu_user = osu_api.client.users[(username)]  # type: ignore
     except HTTPError:
         return await interaction.followup.send("User not found.", ephemeral=True)
 
@@ -399,51 +432,62 @@ async def simulate_1v1(
     interaction: discord.Interaction,
     player_1: discord.Member,
     player_2: discord.Member,
-    model: RatingModelType = RatingModelType.osu,
+    model: RatingModelType = RatingModelType.OSU,
     dry_run: bool = True,
 ):
     """Simulate a 1v1 match between two players."""
 
     try:
-        player1_osu = osu_api.client.users[(database.discord_links[player_1], model.value)]
-        player2_osu = osu_api.client.users[(database.discord_links[player_2], model.value)]
+        player1_osu = osu_api.client.users[
+            (database.discord_links[player_1], GameModeStr(model.value))
+        ]
+        player2_osu = osu_api.client.users[
+            (database.discord_links[player_2], GameModeStr(model.value))
+        ]
     except KeyError:
         return await interaction.response.send_message(
-            "Both players must have linked their profiles.", ephemeral=True,
+            "Both players must have linked their profiles.",
+            ephemeral=True,
         )
-        
+
     await interaction.response.defer(thinking=True)
-        
+
     rating_model = ratings.rating_models[model]
 
     player1_rating = deepcopy(rating_model[player1_osu])
     player2_rating = deepcopy(rating_model[player2_osu])
 
-    ratings_after = rating_model.rate_match([[player1_osu], [player2_osu]], dry_run=dry_run)
+    ratings_after = rating_model.rate_match(
+        [[player1_osu], [player2_osu]], dry_run=dry_run
+    )
 
     player1_rating_after = ratings_after[0][0]
     player2_rating_after = ratings_after[1][0]
 
     graphic = discord.File(
         BytesIO(
-            graphics.render(graphics.OneVOneAfterGraphic(
-                (player1_osu, (player1_rating, player1_rating_after), 1_000_000),
-                (player2_osu, (player2_rating, player2_rating_after), 0),
-                rating_model,
-                winner="player1",
-                watermark="SIMULATION" if dry_run else "ARTIFICIAL RESULTS",
-            ))
+            graphics.render(
+                graphics.OneVOneAfterGraphic(
+                    (player1_osu, (player1_rating, player1_rating_after), 1_000_000),
+                    (player2_osu, (player2_rating, player2_rating_after), 0),
+                    rating_model,
+                    winner="player1",
+                    watermark="SIMULATION" if dry_run else "ARTIFICIAL RESULTS",
+                )
+            )
         ),
-        filename="match-banner.png"
+        filename="match-banner.png",
     )
 
     await interaction.followup.send(
-        f"## Match results ({"not " if dry_run else ""}saved): \n\nplayer 1 ({player_1.mention}):\n```"
+        f"## Match results ({"not " if dry_run else ""}saved):"
+        + "\n\nplayer 1 ({player_1.mention}):\n```"
         + str(player1_rating_after)
         + f"\n```\nplayer 2 ({player_2.mention}):\n```"
         + str(player2_rating_after)
         + "\n```",
-        file=graphic, allowed_mentions=discord.AllowedMentions.none()
+        file=graphic,
+        allowed_mentions=discord.AllowedMentions.none(),
     )
 
 
