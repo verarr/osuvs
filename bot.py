@@ -7,7 +7,7 @@ from typing import Literal
 
 import discord
 from discord import app_commands
-from osu import GameModeStr
+from osu import Beatmap, GameModeStr
 from requests import HTTPError
 from unopt import unwrap
 
@@ -101,6 +101,41 @@ class Accept(discord.ui.View):
             )
 
 
+class OsuBeatmapDownloads(discord.ui.View):
+    def __init__(self, beatmap: Beatmap):
+        super().__init__(timeout=None)
+        self.beatmap = beatmap
+        self.add_item(
+            discord.ui.Button(
+                label="Download from ppy.sh",
+                emoji="⚪",
+                url="https://osu.ppy.sh/beatmapsets/"
+                + str(beatmap.beatmapset_id)
+                + "#"
+                + beatmap.mode.name.lower()
+                + "/"
+                + str(beatmap.id),
+            )
+        )
+        # uncomment when discord adds support for other url schemes
+        #
+        # self.add_item(
+        #     discord.ui.Button(
+        #         label="osu!direct",
+        #         emoji="🔗",
+        #         url="osu://b/" + str(beatmap.id),
+        #     )
+        # )
+        
+        self.add_item(
+            discord.ui.Button(
+                label="catboy.best",
+                emoji="🥺",
+                url="https://catboy.best/d/" + str(beatmap.beatmapset_id),
+            )
+        )
+
+
 @app_commands.default_permissions(manage_guild=True)
 class AdminCommands(app_commands.Group):
     pass
@@ -191,7 +226,8 @@ async def challenge(
         ),
         filename="match-banner.png",
     )
-    view = Accept([opponent])
+    accept_view = Accept([opponent])
+    downloads_view = OsuBeatmapDownloads(beatmap_info)
 
     thread = await channel.create_thread(
         name=f"{interaction.user.display_name} vs {opponent.display_name}"
@@ -201,26 +237,30 @@ async def challenge(
     )
     await thread.add_user(unwrap(client.owo_bot))
     await thread.send(
-        f"Watch out {opponent.mention}, {interaction.user.mention} wants to challenge you!"
-        + "\n"
-        + "Beatmap to play: ["
+        f"Watch out {opponent.mention}, "
+        + f"{interaction.user.mention} wants to challenge you!",
+        file=graphic,
+        view=accept_view,
+    )
+    del graphic
+    await thread.send(
+        "Beatmap to play: ["
         + f"**{unwrap(beatmap_info.beatmapset).title}** - {unwrap(beatmap_info.beatmapset).artist} "
         + f"**[{beatmap_info.version}]**"
         + f" by {unwrap(beatmap_info.beatmapset).creator}"
-        + "]"
-        + f"({unwrap(beatmap_info.url)})",
-        file=graphic,
-        view=view,
+        + "]("
+        + beatmap_info.url
+        + ")",
+        view=downloads_view,
     )
-    del graphic
 
     await interaction.followup.send(
         f"Challenge sent! Look in {thread.jump_url}.", ephemeral=True
     )
 
-    await view.wait()
-    view.clear_items()
-    match view.value:
+    await accept_view.wait()
+    accept_view.clear_items()
+    match accept_view.value:
         case False | None:
             await thread.send(
                 f"Sorry {interaction.user.mention}, your opponent has declined your challenge."
