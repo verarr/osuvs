@@ -21,12 +21,18 @@ class CachedOsuClient:
     users: TTLCachedDict[tuple[OsuUserId | str, osu.GameModeStr | None], osu.User]
     beatmaps: TTLCachedDict[OsuBeatmapId, osu.Beatmap]
 
-    def _get_user(self, user_id: OsuUserId | str, mode: osu.GameModeStr):
-        return self._client.get_user(
-            int(user_id) if isinstance(user_id, OsuUserId) else user_id,  # type: ignore
-            mode,
-            key=("id" if isinstance(user_id, OsuUserId) else "username"),
-        )
+    def _get_user(self, user_id: OsuUserId | str, mode: osu.GameModeStr | None):
+        if mode:
+            return self._client.get_user(
+                int(user_id) if isinstance(user_id, OsuUserId) else user_id,  # type: ignore
+                mode,
+                key=("id" if isinstance(user_id, OsuUserId | int) else "username"),
+            )
+        else:
+            return self._client.get_user(
+                int(user_id) if isinstance(user_id, OsuUserId) else user_id,  # type: ignore
+                key=("id" if isinstance(user_id, OsuUserId | int) else "username"),
+            )
 
     def __init__(self, osu_client: osu.Client):
         self._client = osu_client
