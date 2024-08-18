@@ -6,7 +6,7 @@ import osu
 from openskill.models import PlackettLuce
 from openskill.models.weng_lin.plackett_luce import PlackettLuceRating
 from sortedcollections import ValueSortedDict
-from unopt import UnwrapError, unwrap
+from unopt import unwrap
 
 import osuvs_db as database
 from misc.osuvs_constants import OsuUserId, RatingDataType, RatingModelType
@@ -94,14 +94,9 @@ class RatingModel:
         scores: list[list[int | float]] | None = None,
         dry_run: bool = False,
     ) -> list[list[PlackettLuceRating]]:
-        try:
-            teams_ratings: list[list[PlackettLuceRating]] = [
-                [self[user] for user in team] for team in teams
-            ]
-        except UnwrapError as e:
-            raise RatingNotFoundError(
-                "All players in the match must have an initialized rating."
-            ) from e
+        teams_ratings: list[list[PlackettLuceRating]] = [
+            [self[user] for user in team] for team in teams
+        ]
         if dry_run:
             teams_ratings = deepcopy(teams_ratings)
 
