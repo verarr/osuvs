@@ -443,7 +443,7 @@ async def admin_link(
     )
 
 
-@admin_group.command(name="unlink")
+@link_admin_group.command(name="unlink")
 async def admin_unlink(interaction: discord.Interaction, member: discord.Member):
     """Unlink the osu! username assigned to a Discord account."""
     await interaction.response.defer(ephemeral=True, thinking=True)
