@@ -3,8 +3,7 @@ from functools import reduce
 from operator import iconcat
 
 import osu
-from openskill.models import PlackettLuce
-from openskill.models.weng_lin.plackett_luce import PlackettLuceRating
+from openskill.models import PlackettLuce, PlackettLuceRating
 from sortedcollections import ValueSortedDict
 from unopt import unwrap
 
