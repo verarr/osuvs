@@ -1,6 +1,5 @@
 import re
-from abc import ABCMeta, abstractmethod
-from typing import Any, Callable, Mapping, Never, TypeVar
+from typing import Callable, Mapping, Never, TypeVar
 
 from cachetools import TTLCache
 from osu import GameModeStr
@@ -62,15 +61,3 @@ class TTLCachedDict(Mapping[K, V]):
 
     def __len__(self) -> Never:
         raise NotImplementedError
-
-
-class ComparableAddable(metaclass=ABCMeta):
-    @abstractmethod
-    def __lt__(self, other: Any) -> bool: ...
-    @abstractmethod
-    def __add__(self, other: Any) -> Any: ...
-    @abstractmethod
-    def __sub__(self, other: Any) -> Any: ...
-
-
-CTA = TypeVar("CTA", bound=ComparableAddable)
