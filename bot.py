@@ -352,12 +352,6 @@ async def profile(
             ephemeral=True,
         )
     mode = GameModeStr(model.value)
-#    try:
-#         osu_user = osu_api.client.users[(osu_id, mode)]
-#     except KeyError:
-#         return await interaction.response.send_message(
-#             "User not found.", ephemeral=True
-#         )
     osu_user = osu_api.client.users[(osu_id, mode)]
 
     await interaction.response.defer(thinking=True)
