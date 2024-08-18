@@ -427,7 +427,7 @@ async def admin_link(
     await interaction.response.defer(ephemeral=True, thinking=True)
 
     try:
-        osu_user = osu_api.client.users[(username)]  # type: ignore
+        osu_user = osu_api.client.users[(username, None)]  # type: ignore
     except HTTPError:
         return await interaction.followup.send("User not found.", ephemeral=True)
 
