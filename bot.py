@@ -57,6 +57,8 @@ client = MyClient(intents=client_intents)
 
 # bot functionality
 
+MODESTR = Literal["osu", "taiko", "fruits", "mania"]
+
 
 @client.event
 async def on_ready():
@@ -340,7 +342,7 @@ async def challenge(
 )
 async def profile(
     interaction: discord.Interaction,
-    model: RatingModelType = RatingModelType.OSU,
+    model: MODESTR = "osu",
     player: discord.Member | None = None,
 ):
     """Check a player's profile."""
@@ -351,12 +353,12 @@ async def profile(
             "You have not linked your profile yet. Use `/link` to do so.",
             ephemeral=True,
         )
-    mode = GameModeStr(model.value)
+    mode = GameModeStr(model)
     osu_user = osu_api.client.users[(osu_id, mode)]
 
     await interaction.response.defer(thinking=True)
 
-    rating_model = ratings.rating_models[model]
+    rating_model = ratings.rating_models[RatingModelType(model)]
 
     rating = rating_model[osu_user]
 
