@@ -16,13 +16,6 @@ def _ranking_key(rating: PlackettLuceRating) -> float:
     return rating.ordinal(alpha=-1)
 
 
-class RatingNotFoundError(Exception):
-    """Error class to indicate that a rating does not exist."""
-
-    def __init__(self, message: str):
-        super().__init__(message)
-
-
 DefaultModelType = PlackettLuce
 
 
