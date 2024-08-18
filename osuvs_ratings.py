@@ -9,7 +9,7 @@ from sortedcollections import ValueSortedDict
 from unopt import UnwrapError, unwrap
 
 import osuvs_db as database
-from misc.osuvs_constants import RatingModelType
+from misc.osuvs_constants import OsuUserId, RatingDataType, RatingModelType
 
 
 def _ranking_key(rating: PlackettLuceRating) -> float:
@@ -46,13 +46,13 @@ class RatingModel:
             assert not isinstance(osu_id, osu.User)
             assert not isinstance(rating, PlackettLuceRating)
             if (
-                rating[database.RatingDataType.MU] is not None
-                and rating[database.RatingDataType.SIGMA] is not None
+                rating[RatingDataType.MU] is not None
+                and rating[RatingDataType.SIGMA] is not None
             ):
                 buffer[osu_id] = self.model.create_rating(
                     [
-                        rating[database.RatingDataType.MU],
-                        rating[database.RatingDataType.SIGMA],
+                        rating[RatingDataType.MU],
+                        rating[RatingDataType.SIGMA],
                     ],
                     name=str(osu_id),
                 )
