@@ -240,6 +240,37 @@ class OsuRatingsDatabase(AbstractOsuRatingsDatabase):
             (osu_user.id if isinstance(osu_user, osu.User) else osu_user,),
         )
 
+    def update(
+        self,
+        values: (
+            dict[osu.User, PlackettLuceRating] | dict[OsuUserId, PlackettLuceRating]
+        ),
+    ) -> None:
+        cur.executemany(
+            f"""UPDATE {self.table}
+                SET
+                    {self.columns[RatingDataType.MU]} = :{self.columns[RatingDataType.MU]},
+                    {self.columns[RatingDataType.SIGMA]} = :{self.columns[RatingDataType.SIGMA]}
+                WHERE {self.columns[IdType.OSU_ID]} = :{self.columns[IdType.OSU_ID]}""",
+            [
+                (
+                    osu_user.id if isinstance(osu_user, osu.User) else osu_user,
+                    (
+                        value.mu
+                        if isinstance(value, PlackettLuceRating)
+                        else value[RatingDataType.MU]
+                    ),
+                    (
+                        value.sigma
+                        if isinstance(value, PlackettLuceRating)
+                        else value[RatingDataType.SIGMA]
+                    ),
+                )
+                for osu_user, value in values.items()
+            ],
+        )
+        con.commit()
+
     def dict(self) -> dict[OsuUserId, dict[RatingDataType, float]]:
         cur.execute(
             f"""SELECT

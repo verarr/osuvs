@@ -74,11 +74,11 @@ class RatingModel:
             return
         self._update(ratings)
         if isinstance(ratings, list):
-            for rating in ratings:
-                self.db[database.OsuUserId(unwrap(rating.name))] = rating
+            self.db.update(
+                {OsuUserId(unwrap(rating.name)): rating for rating in ratings}
+            )
         else:
-            for user, rating in ratings.items():
-                self.db[database.OsuUserId(unwrap(user.id))] = rating
+            self.db.update(ratings)
 
     def __getitem__(self, user: osu.User) -> PlackettLuceRating:
         if user not in self:
