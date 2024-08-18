@@ -305,21 +305,20 @@ async def profile(
 ):
     """Check a player's profile."""
     try:
-        osu_user = osu_api.client.users[
-            (
-                database.discord_links[player or interaction.user],
-                GameModeStr(model.value),
-            )
-        ]
+        osu_id = database.discord_links[player or interaction.user]
     except KeyError:
         return await interaction.response.send_message(
             "You have not linked your profile yet. Use `/link` to do so.",
             ephemeral=True,
         )
-    except HTTPError:
-        return await interaction.response.send_message(
-            "User not found.", ephemeral=True
-        )
+    mode = GameModeStr(model.value)
+#    try:
+#         osu_user = osu_api.client.users[(osu_id, mode)]
+#     except KeyError:
+#         return await interaction.response.send_message(
+#             "User not found.", ephemeral=True
+#         )
+    osu_user = osu_api.client.users[(osu_id, mode)]
 
     await interaction.response.defer(thinking=True)
 
@@ -371,7 +370,7 @@ async def unlink(interaction: discord.Interaction):
     """Unlink your osu! username from your Discord account."""
     await interaction.response.defer(ephemeral=True, thinking=True)
 
-    if interaction.user in database.discord_links:
+    if interaction.user not in database.discord_links:
         return await interaction.followup.send(
             "You have not linked your profile yet. No action was performed.",
             ephemeral=True,
