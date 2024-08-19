@@ -7,13 +7,13 @@ from cachetools import TTLCache
 
 from .misc.constants import OsuBeatmapId, OsuUserId
 
-SECRETS_DIR: str = "./secrets"
+_SECRETS_DIR: str = "./secrets"
 
 try:
-    with open(f"{SECRETS_DIR}/osu_api.pickle", "rb") as f:
-        OSU_API_DETAILS: dict[str, str | int] = pickle.load(f)
-        assert isinstance(OSU_API_DETAILS["client_id"], int)
-        assert isinstance(OSU_API_DETAILS["client_secret"], str)
+    with open(f"{_SECRETS_DIR}/osu_api.pickle", "rb") as f:
+        _OSU_API_DETAILS: dict[str, str | int] = pickle.load(f)
+        assert isinstance(_OSU_API_DETAILS["client_id"], int)
+        assert isinstance(_OSU_API_DETAILS["client_secret"], str)
 except FileNotFoundError as e:
     raise RuntimeError("osu! API details file not found.") from e
 
@@ -43,18 +43,18 @@ def parse_beatmap_url(url: str) -> tuple[int, osu.GameModeStr, int]:
     return (set_id, mode, diff_id)
 
 
-K, V = TypeVar("K"), TypeVar("V")
+_K, _V = TypeVar("K"), TypeVar("V")
 
 
-class TTLCachedDict(Mapping[K, V]):
-    _cache: TTLCache[K, V]
-    _get_func: Callable[[K], V]
+class _TTLCachedDict(Mapping[_K, _V]):
+    _cache: TTLCache[_K, _V]
+    _get_func: Callable[[_K], _V]
 
-    def __init__(self, maxsize: int, ttl: int, get_func: Callable[[K], V]) -> None:
+    def __init__(self, maxsize: int, ttl: int, get_func: Callable[[_K], _V]) -> None:
         self._cache = TTLCache(maxsize=maxsize, ttl=ttl)
         self._get_func = get_func
 
-    def __getitem__(self, key: K) -> V:
+    def __getitem__(self, key: _K) -> _V:
         if key not in self._cache:
             try:
                 self._cache[key] = self._get_func(key)
@@ -62,7 +62,7 @@ class TTLCachedDict(Mapping[K, V]):
                 raise KeyError("Failed to retrieve value.") from e
         return self._cache[key]
 
-    def __contains__(self, key: K) -> bool:
+    def __contains__(self, key: _K) -> bool:
         try:
             _ = self.get(key)
             return True
@@ -76,10 +76,10 @@ class TTLCachedDict(Mapping[K, V]):
         raise NotImplementedError
 
 
-class CachedOsuClient:
+class _CachedOsuClient:
     _client: osu.Client
-    users: TTLCachedDict[tuple[OsuUserId | str, osu.GameModeStr | None], osu.User]
-    beatmaps: TTLCachedDict[OsuBeatmapId, osu.Beatmap]
+    users: _TTLCachedDict[tuple[OsuUserId | str, osu.GameModeStr | None], osu.User]
+    beatmaps: _TTLCachedDict[OsuBeatmapId, osu.Beatmap]
 
     def _get_user(self, user_id: OsuUserId | str, mode: osu.GameModeStr | None):
         if mode:
@@ -96,20 +96,20 @@ class CachedOsuClient:
 
     def __init__(self, osu_client: osu.Client):
         self._client = osu_client
-        self.users = TTLCachedDict(
+        self.users = _TTLCachedDict(
             maxsize=1000,
             ttl=60,
             get_func=lambda x: self._get_user(x[0], x[1]),
         )
-        self.beatmaps = TTLCachedDict(
+        self.beatmaps = _TTLCachedDict(
             maxsize=1000,
             ttl=60 * 15,
             get_func=lambda x: self._client.get_beatmap(int(x)),
         )
 
 
-client = CachedOsuClient(
+client = _CachedOsuClient(
     osu.Client.from_credentials(
-        OSU_API_DETAILS["client_id"], OSU_API_DETAILS["client_secret"], None
+        _OSU_API_DETAILS["client_id"], _OSU_API_DETAILS["client_secret"], None
     )
 )
