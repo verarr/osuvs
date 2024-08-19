@@ -3,7 +3,7 @@ from asyncio import InvalidStateError, create_task, sleep
 from osu import Beatmap, SoloScore, User, UserScoreType
 from unopt import unwrap
 
-from . import osu_api as osu_api
+from .osu_api import client as osu
 
 
 class MatchVoidException(Exception):
@@ -19,7 +19,7 @@ async def _check_scores(teams: list[list[User]], beatmap: Beatmap):
         team_score = 0
         for player in team:
             try:
-                scores = osu_api.client._client.get_user_scores(
+                scores = osu._client.get_user_scores(
                     player.id, UserScoreType.RECENT, mode=beatmap.mode
                 )
                 valid_scores = [
