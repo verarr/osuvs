@@ -15,8 +15,8 @@ from . import database, graphics
 from . import match_tracking as matches
 from . import ratings
 from .misc.constants import OsuBeatmapId, RatingModelType
-from .misc.utils import parse_beatmap_url
 from .osu_api import client as osu
+from .osu_api import parse_beatmap_url
 
 SECRETS_DIR: str = "./secrets"
 

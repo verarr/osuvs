@@ -1,4 +1,5 @@
 import pickle
+import re
 
 import osu
 
@@ -14,6 +15,31 @@ try:
         assert isinstance(OSU_API_DETAILS["client_secret"], str)
 except FileNotFoundError as e:
     raise RuntimeError("osu! API details file not found.") from e
+
+
+def parse_beatmap_url(url: str) -> tuple[int, osu.GameModeStr, int]:
+    re_match = re.search(
+        r"/beatmapsets/(?P<set_id>\d+)#(?P<mode>[a-z]+)/(?P<diff_id>\d+)", url
+    )
+    if not re_match:
+        raise ValueError("Invalid URL.")
+    set_id: int = int(re_match.group("set_id"))
+    modestr: str = re_match.group("mode")
+    match modestr:
+        case "osu":
+            mode = osu.GameModeStr.STANDARD
+        case "taiko":
+            mode = osu.GameModeStr.TAIKO
+        case "fruits":
+            mode = osu.GameModeStr.CATCH
+        case "mania":
+            mode = osu.GameModeStr.MANIA
+        case _:
+            raise ValueError(
+                "Invalid mode. Must be one of 'osu', 'taiko', 'fruits', 'mania'."
+            )
+    diff_id: int = int(re_match.group("diff_id"))
+    return (set_id, mode, diff_id)
 
 
 class CachedOsuClient:
