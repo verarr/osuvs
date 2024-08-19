@@ -20,3 +20,11 @@
   - [ ] elo
   - [ ] more..?
 - [ ] matchmaking
+- [ ] lazer lobbies (blocked by unfinished lazer API)
+
+## For development
+
+- [ ] logging
+- [ ] integration with some kind of tooling
+- [ ] extract osu! API into external package
+  - [ ] extract API helpers into external package
