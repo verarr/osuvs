@@ -8,7 +8,7 @@ from sortedcollections import ValueSortedDict
 from unopt import unwrap
 
 from . import database
-from .misc.osuvs_constants import OsuUserId, RatingDataType, RatingModelType
+from .misc.constants import OsuUserId, RatingDataType, RatingModelType
 
 
 def _ranking_key(rating: PlackettLuceRating) -> float:

@@ -2,8 +2,8 @@ import pickle
 
 import osu
 
-from .misc.osuvs_constants import OsuBeatmapId, OsuUserId
-from .misc.osuvs_utils import TTLCachedDict
+from .misc.constants import OsuBeatmapId, OsuUserId
+from .misc.utils import TTLCachedDict
 
 SECRETS_DIR: str = "./secrets"
 
