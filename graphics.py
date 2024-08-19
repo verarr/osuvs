@@ -8,7 +8,7 @@ from openskill.models.weng_lin.plackett_luce import PlackettLuceRating
 from osu import User
 from unopt import unwrap
 
-import osuvs_ratings as ratings
+import ratings as ratings
 
 
 def _elo_function(player: PlackettLuceRating):

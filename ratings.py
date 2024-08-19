@@ -7,7 +7,7 @@ from openskill.models import PlackettLuce, PlackettLuceRating
 from sortedcollections import ValueSortedDict
 from unopt import unwrap
 
-import osuvs_db as database
+import database as database
 from misc.osuvs_constants import OsuUserId, RatingDataType, RatingModelType
 
 

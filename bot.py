@@ -11,11 +11,11 @@ from osu import Beatmap, GameModeStr
 from requests import HTTPError
 from unopt import unwrap
 
-import osuvs_db as database
-import osuvs_graphics as graphics
-import osuvs_matches as matches
-import osuvs_osu_api as osu_api
-import osuvs_ratings as ratings
+import database as database
+import graphics as graphics
+import match_tracking as matches
+import osu_api as osu_api
+import ratings as ratings
 from misc.osuvs_constants import OsuBeatmapId, RatingModelType
 from misc.osuvs_utils import parse_beatmap_url
 

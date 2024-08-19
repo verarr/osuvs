@@ -3,7 +3,7 @@ from asyncio import InvalidStateError, create_task, sleep
 from osu import Beatmap, SoloScore, User, UserScoreType
 from unopt import unwrap
 
-import osuvs_osu_api as osu_api
+import osu_api as osu_api
 
 
 class MatchVoidException(Exception):
