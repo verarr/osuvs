@@ -3,14 +3,14 @@ from asyncio import InvalidStateError, create_task, sleep
 from osu import Beatmap, SoloScore, User, UserScoreType
 from unopt import unwrap
 
-import osuvs_osu_api as osu_api
+from .osu_api import client as osu
 
 
 class MatchVoidException(Exception):
     """Exception to indicate that a match cannot be completed due to lack of scores."""
 
 
-async def check_scores(teams: list[list[User]], beatmap: Beatmap):
+async def _check_scores(teams: list[list[User]], beatmap: Beatmap):
     player_scores: list[list[int]] = []
     total_score = 0
     everyone_finished = True
@@ -19,7 +19,7 @@ async def check_scores(teams: list[list[User]], beatmap: Beatmap):
         team_score = 0
         for player in team:
             try:
-                scores = osu_api.client._client.get_user_scores(
+                scores = osu._client.get_user_scores(
                     player.id, UserScoreType.RECENT, mode=beatmap.mode
                 )
                 valid_scores = [
@@ -47,7 +47,7 @@ async def do_match(teams: list[list[User]], beatmap: Beatmap) -> list[list[int]]
     await sleep(beatmap.total_length)
     player_scores: list[list[int]]
     for _ in range(int((max_time - beatmap.total_length) // 10)):
-        task = create_task(check_scores(teams, beatmap))
+        task = create_task(_check_scores(teams, beatmap))
         await sleep(10)
         try:
             player_scores, _, everyone_finished = task.result()
@@ -57,7 +57,7 @@ async def do_match(teams: list[list[User]], beatmap: Beatmap) -> list[list[int]]
         if everyone_finished:
             return player_scores
     await sleep((max_time - beatmap.total_length) % 10)
-    player_scores, total_score, _ = await check_scores(teams, beatmap)
+    player_scores, total_score, _ = await _check_scores(teams, beatmap)
     if total_score == 0:
         raise MatchVoidException("No scores found for the given beatmap.")
     return player_scores

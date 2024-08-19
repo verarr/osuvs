@@ -5,7 +5,7 @@ import discord
 import osu
 from openskill.models.weng_lin.plackett_luce import PlackettLuceRating
 
-from misc.osuvs_constants import (
+from .misc.constants import (
     DiscordUserId,
     IdType,
     OsuUserId,

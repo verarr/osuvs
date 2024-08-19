@@ -11,13 +11,12 @@ from osu import Beatmap, GameModeStr
 from requests import HTTPError
 from unopt import unwrap
 
-import osuvs_db as database
-import osuvs_graphics as graphics
-import osuvs_matches as matches
-import osuvs_osu_api as osu_api
-import osuvs_ratings as ratings
-from misc.osuvs_constants import OsuBeatmapId, RatingModelType
-from misc.osuvs_utils import parse_beatmap_url
+from . import database, graphics
+from . import match_tracking as matches
+from . import ratings
+from .misc.constants import OsuBeatmapId, RatingModelType
+from .osu_api import client as osu
+from .osu_api import parse_beatmap_url
 
 SECRETS_DIR: str = "./secrets"
 
@@ -182,7 +181,7 @@ async def challenge(
             ephemeral=True,
         )
     try:
-        beatmap_info = osu_api.client.beatmaps[OsuBeatmapId(diff_id)]
+        beatmap_info = osu.beatmaps[OsuBeatmapId(diff_id)]
     except HTTPError:
         return await interaction.followup.send(
             "Beatmap not found. Please provide a valid beatmap URL.",
@@ -191,7 +190,7 @@ async def challenge(
 
     # check players
     try:
-        challenger_osu = osu_api.client.users[
+        challenger_osu = osu.users[
             (database.discord_links[interaction.user], mode)
         ]
     except KeyError:
@@ -203,7 +202,7 @@ async def challenge(
             ephemeral=True,
         )
     try:
-        opponent_osu = osu_api.client.users[(database.discord_links[opponent], mode)]
+        opponent_osu = osu.users[(database.discord_links[opponent], mode)]
     except KeyError:
         return await interaction.followup.send(
             "Your opponent hasn't linked their profile yet. "
@@ -354,7 +353,7 @@ async def profile(
             ephemeral=True,
         )
     mode = GameModeStr(model)
-    osu_user = osu_api.client.users[(osu_id, mode)]
+    osu_user = osu.users[(osu_id, mode)]
 
     await interaction.response.defer(thinking=True)
 
@@ -387,7 +386,7 @@ async def link(interaction: discord.Interaction, username: str):
     await interaction.response.defer(ephemeral=True, thinking=True)
 
     try:
-        osu_user = osu_api.client.users[(username, None)]
+        osu_user = osu.users[(username, None)]
     except HTTPError:
         return await interaction.followup.send("User not found.", ephemeral=True)
 
@@ -429,7 +428,7 @@ async def admin_link(
     await interaction.response.defer(ephemeral=True, thinking=True)
 
     try:
-        osu_user = osu_api.client.users[(username, None)]  # type: ignore
+        osu_user = osu.users[(username, None)]  # type: ignore
     except HTTPError:
         return await interaction.followup.send("User not found.", ephemeral=True)
 
@@ -473,10 +472,10 @@ async def simulate_1v1(
     """Simulate a 1v1 match between two players."""
 
     try:
-        player1_osu = osu_api.client.users[
+        player1_osu = osu.users[
             (database.discord_links[player_1], GameModeStr(model.value))
         ]
-        player2_osu = osu_api.client.users[
+        player2_osu = osu.users[
             (database.discord_links[player_2], GameModeStr(model.value))
         ]
     except KeyError:

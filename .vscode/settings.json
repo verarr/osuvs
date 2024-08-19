@@ -7,5 +7,14 @@
 			"source.organizeImports": "always"
 		},
 	  },
-	  "isort.args":["--profile", "black"]
+	  "isort.args":["--profile", "black"],
+	"conventionalCommits.scopes": [
+		"bot",
+		"database",
+		"graphics",
+		"match_tracking",
+		"osu_api",
+		"ratings",
+		"misc"
+	]
 }
