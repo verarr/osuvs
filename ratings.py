@@ -7,8 +7,8 @@ from openskill.models import PlackettLuce, PlackettLuceRating
 from sortedcollections import ValueSortedDict
 from unopt import unwrap
 
-from . import database
-from .misc.constants import OsuUserId, RatingDataType, RatingModelType
+import database
+from misc.constants import OsuUserId, RatingDataType, RatingModelType
 
 
 def _ranking_key(rating: PlackettLuceRating) -> float:

@@ -11,11 +11,13 @@ from osu import Beatmap, GameModeStr
 from requests import HTTPError
 from unopt import unwrap
 
-from . import database, graphics
-from . import match_tracking as matches
-from . import ratings
-from .misc.constants import OsuBeatmapId, RatingModelType
-from .osu_api import client as osu
+import database
+import graphics
+import match_tracking as matches
+import ratings
+from misc.constants import OsuBeatmapId, RatingModelType
+from osu_api import client as osu
+
 from .osu_api import parse_beatmap_url
 
 SECRETS_DIR: str = "./secrets"

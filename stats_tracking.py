@@ -3,7 +3,7 @@ from typing import Generic, TypeVar
 
 from osu import Mod, Mods
 
-from . import database
+import database
 
 T = TypeVar("T")
 

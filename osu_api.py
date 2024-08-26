@@ -5,7 +5,7 @@ from typing import Callable, Mapping, Never, TypeVar
 import osu
 from cachetools import TTLCache
 
-from .misc.constants import OsuBeatmapId, OsuUserId
+from misc.constants import OsuBeatmapId, OsuUserId
 
 _SECRETS_DIR: str = "./secrets"
 
