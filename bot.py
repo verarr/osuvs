@@ -1,3 +1,4 @@
+import logging
 import pickle
 import sys
 from copy import deepcopy
@@ -10,6 +11,20 @@ from discord import app_commands
 from osu import Beatmap, GameModeStr
 from requests import HTTPError
 from unopt import unwrap
+
+from misc.logging import ColourFormatter
+
+logger = logging.getLogger("osuvs")
+handler = logging.StreamHandler()
+handler.setFormatter(ColourFormatter())
+logger.addHandler(handler)
+
+logging.basicConfig(
+    level=logging.DEBUG,
+    format="%(asctime)s - %(levelname)s - %(name)s - %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+    filename="osuvs.log",
+)
 
 import database
 import graphics
@@ -26,7 +41,7 @@ try:
     with open(f"{SECRETS_DIR}/token.pickle", "rb") as f:
         TOKEN = pickle.load(f)
 except FileNotFoundError:
-    print("Token file not found.")
+    logger.error("Token file not found.")
     sys.exit(1)
 
 GUILD = discord.Object(id=1271199252667830363)  # my server shshshshshshshshsh
@@ -62,16 +77,14 @@ MODESTR = Literal["osu", "taiko", "fruits", "mania"]
 
 @client.event
 async def on_ready():
-    print(f"Logged in as {client.user} (ID: {unwrap(client.user).id})")
-    print("------")
+    logger.info(f"Logged in as {client.user} (ID: {unwrap(client.user).id})")
 
     client.guild = unwrap(client.get_guild(GUILD.id))
-    print(f"Got guild: {client.guild.name}")
+    logger.debug(f"Got guild: {client.guild.name}")
     client.owo_bot = client.guild.get_member(OWO_BOT_ID)
-    print(f"owo bot is here: {unwrap(client.owo_bot).id}")
+    logger.debug(f"owo bot is here: {unwrap(client.owo_bot).id}")
 
-    print("------")
-    print("Ready!")
+    logger.info("Ready!")
 
 
 class Accept(discord.ui.View):
@@ -128,7 +141,7 @@ class OsuBeatmapDownloads(discord.ui.View):
         #         url="osu://b/" + str(beatmap.id),
         #     )
         # )
-        
+
         self.add_item(
             discord.ui.Button(
                 label="catboy.best",
@@ -191,9 +204,7 @@ async def challenge(
 
     # check players
     try:
-        challenger_osu = osu.users[
-            (database.discord_links[interaction.user], mode)
-        ]
+        challenger_osu = osu.users[(database.discord_links[interaction.user], mode)]
     except KeyError:
         return await interaction.followup.send(
             "You haven't linked your profile yet. "

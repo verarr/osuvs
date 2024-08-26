@@ -1,3 +1,4 @@
+import logging
 import sqlite3
 from typing import Never, override
 
@@ -12,6 +13,9 @@ from misc.constants import (
     RatingDataType,
     RatingModelType,
 )
+
+logger = logging.getLogger("osuvs." + __name__)
+logger.setLevel(logging.DEBUG)
 
 DATABASE: str = "./osuvs.db"
 
@@ -32,11 +36,14 @@ cur = con.cursor()
 class DiscordLinksDatabase:
     table: str
     columns: dict[IdType, str]
+    _log: logging.Logger
 
     def __init__(self, table: str, columns: dict[IdType, str]) -> None:
         super().__init__()
         self.table = table
         self.columns = columns
+        self._log = logging.getLogger(logger.name + ".discord")
+        self._log.debug("Initialized DiscordLinksDatabase")
 
     def __getitem__(
         self, discord_user: discord.Member | discord.User | DiscordUserId
@@ -116,10 +123,13 @@ class DiscordLinksDatabase:
 class AbstractOsuRatingsDatabase:
     table: str
     columns: dict[IdType | RatingDataType, str]
+    _log: logging.Logger
 
     def __init__(self, table: str, columns: dict[IdType | RatingDataType, str]) -> None:
         self.table = table
         self.columns = columns
+        self._log = logging.getLogger(logger.name + ".osu")
+        self._log.debug("Initialized OsuRatingsDatabase")
 
     def __getitem__(self, key) -> Never:
         raise NotImplementedError("Subclass must implement __getitem__ method")
@@ -167,6 +177,8 @@ class OsuRatingsDatabase(AbstractOsuRatingsDatabase):
                 RatingDataType.SIGMA: f"{model}_{columns[RatingDataType.SIGMA]}",
             },
         )
+        self._log = logging.getLogger(self._log.name + "." + model)
+        self._log.debug(f"Initialized database for {model} ratings")
 
     @override
     def __getitem__(
@@ -307,3 +319,5 @@ models = {
     )
     for model in RatingModelType
 }
+
+logger.info("Databases initialized successfully")
