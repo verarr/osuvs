@@ -1,3 +1,4 @@
+import logging
 from copy import deepcopy
 from functools import reduce
 from operator import iconcat
@@ -9,6 +10,9 @@ from unopt import unwrap
 
 import database
 from misc.constants import OsuUserId, RatingDataType, RatingModelType
+
+logger = logging.getLogger("osuvs." + __name__)
+logger.setLevel(logging.DEBUG)
 
 
 def _ranking_key(rating: PlackettLuceRating) -> float:
@@ -23,13 +27,16 @@ class RatingModel:
     osu_ratings_links: ValueSortedDict
     model_type: RatingModelType
     db: database.OsuRatingsDatabase
+    _log: logging.Logger
 
     def __init__(self, model: PlackettLuce, model_type: RatingModelType):
         self.model = model
         self.osu_ratings_links = ValueSortedDict(_ranking_key)
         self.model_type = model_type
         self.db = database.models[model_type]
+        self._log = logging.getLogger(logger.name + "." + str(model_type.value))
         self._load_ratings()
+        self._log.debug("Initialized rating model for %s", self.model_type)
 
     def _load_ratings(self):
         ratings = self.db.dict() or {}
@@ -49,6 +56,7 @@ class RatingModel:
                     name=str(osu_id),
                 )
         self._update(list(buffer.values()))
+        self._log.info("Loaded %d ratings from database", len(buffer))
 
     def _update(
         self, ratings: list[PlackettLuceRating] | dict[osu.User, PlackettLuceRating]
@@ -71,6 +79,7 @@ class RatingModel:
             )
         else:
             self.db.update(ratings)
+        self._log.info("Updated ratings with %d new entries", len(ratings))
 
     def __getitem__(self, user: osu.User) -> PlackettLuceRating:
         if user not in self:
@@ -82,10 +91,12 @@ class RatingModel:
 
     def __setitem__(self, user: osu.User, value: PlackettLuceRating) -> None:
         self.update({user: value})
+        self._log.info("Set rating for %s", user)
 
     def init_rating(self, user: osu.User) -> None:
         rating = self.model.rating(name=str(user.id))
         self.update([rating])
+        self._log.info("Initialized rating for %s", user)
 
     def rate_match(
         self,
@@ -106,6 +117,7 @@ class RatingModel:
         )
         players: list[PlackettLuceRating] = reduce(iconcat, teams_ratings, [])
         if not dry_run:
+            self._log.info("Rated match with %d players", len(players))
             self.update(players)
         return teams_ratings
 
@@ -114,6 +126,8 @@ rating_models: dict[RatingModelType, RatingModel] = {
     rating_model: RatingModel(DefaultModelType(), rating_model)
     for rating_model in RatingModelType
 }
+
+logger.info("Initialized rating models")
 
 
 def rating_exists(user: osu.User) -> bool:
