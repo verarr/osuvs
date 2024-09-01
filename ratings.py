@@ -66,6 +66,7 @@ class RatingModel:
             if isinstance(ratings, list)
             else ratings
         )
+        self._log.debug("Updated ratings (in memory) with %d new entries", len(ratings))
 
     def update(
         self, ratings: list[PlackettLuceRating] | dict[osu.User, PlackettLuceRating]
@@ -84,9 +85,11 @@ class RatingModel:
     def __getitem__(self, user: osu.User) -> PlackettLuceRating:
         if user not in self:
             self.init_rating(user)
+        self._log.debug("Retrieved rating for %s", user)
         return self.osu_ratings_links[user.id]
 
     def __contains__(self, user: osu.User) -> bool:
+        self._log.debug("Checking if rating exists for %s", user)
         return user.id in self.osu_ratings_links
 
     def __setitem__(self, user: osu.User, value: PlackettLuceRating) -> None:
@@ -119,6 +122,8 @@ class RatingModel:
         if not dry_run:
             self._log.info("Rated match with %d players", len(players))
             self.update(players)
+        else:
+            self._log.debug("(Dry run) Rated match with %d players", len(players))
         return teams_ratings
 
 
@@ -131,4 +136,5 @@ logger.info("Initialized rating models")
 
 
 def rating_exists(user: osu.User) -> bool:
+    logger.debug("Checking if any rating exists for %s", user)
     return any(user in rating_model for rating_model in rating_models.values())
