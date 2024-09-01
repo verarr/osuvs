@@ -1,5 +1,7 @@
 import dataclasses
+import logging
 import subprocess
+import time
 from datetime import datetime
 from typing import Callable, Literal
 
@@ -9,6 +11,9 @@ from osu import User
 from unopt import unwrap
 
 import ratings
+
+logger = logging.getLogger("osuvs." + __name__)
+logger.setLevel(logging.DEBUG)
 
 
 def _elo_function(player: PlackettLuceRating):
@@ -355,6 +360,8 @@ def render(graphic: Graphic) -> bytes:
     for string in variable_mappings:
         svg = svg.replace(string, variable_mappings[string])
 
+    logger.debug(f"Rendering {graphic.__class__.__name__} graphic...")
+    time_start = time.time()
     result = subprocess.run(
         [
             INKSCAPE,
@@ -368,4 +375,5 @@ def render(graphic: Graphic) -> bytes:
         capture_output=True,
         check=True,
     )
+    logger.debug(f"Rendering took {time.time() - time_start:.2f} seconds")
     return result.stdout
